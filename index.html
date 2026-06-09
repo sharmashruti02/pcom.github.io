@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IIML Squad Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.3.0/dist/tabler-icons.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #ededeb;
+    --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --green: #1D9E75; --red: #E24B4A;
+    --green-bg: #E1F5EE; --green-text: #0F6E56;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --bg2: #242422; --bg3: #2e2e2c;
+      --text: #f0ede8; --text2: #b4b2a9; --text3: #888780;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --green: #5DCAA5; --red: #F09595;
+      --green-bg: #04342C; --green-text: #9FE1CB;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+  .page { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 20px; font-weight: 500; color: var(--text); }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 8px; }
+  .clock { font-size: 13px; color: var(--text2); font-variant-numeric: tabular-nums; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat { background: var(--bg2); border-radius: var(--radius); padding: 0.75rem 1rem; }
+  .stat .lbl { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .stat .val { font-size: 24px; font-weight: 500; color: var(--text); }
+  .stat .val.g { color: var(--green); }
+  .stat .val.r { color: var(--red); }
+  .day-tabs { display: flex; gap: 6px; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .day-tab { padding: 5px 12px; font-size: 13px; border-radius: var(--radius); cursor: pointer; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); }
+  .day-tab.active { background: var(--bg2); color: var(--text); border-color: var(--border2); font-weight: 500; }
+  .controls { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+  .controls label { font-size: 13px; color: var(--text2); }
+  input[type=time], select { height: 34px; padding: 0 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--radius); outline: none; }
+  button { height: 34px; padding: 0 14px; font-size: 13px; background: transparent; color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--radius); cursor: pointer; }
+  button:hover { background: var(--bg2); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .free-banner { background: var(--green-bg); border: 0.5px solid var(--green); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 13px; color: var(--green-text); display: none; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 0.85rem 1rem; }
+  .card.free { border-left: 3px solid var(--green); }
+  .card.busy { border-left: 3px solid var(--red); }
+  .card .roll { font-size: 11px; color: var(--text3); font-family: monospace; margin-bottom: 4px; }
+  .card .status { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .card .status.g { color: var(--green); }
+  .card .detail { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .hint { text-align: center; padding: 2rem; color: var(--text2); font-size: 14px; line-height: 1.8; }
+  .api-setup { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .api-setup h3 { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+  .api-setup p { font-size: 13px; color: var(--text2); margin-bottom: 10px; line-height: 1.6; }
+  .api-row { display: flex; gap: 8px; }
+  .api-row input[type=text] { flex: 1; height: 34px; padding: 0 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--radius); font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <h1>Squad Tracker &mdash; IIML Term IV</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="clock" id="clock"></span>
+      <button onclick="loadSchedules()" id="refreshBtn"><i class="ti ti-refresh"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="api-setup" id="apiSetup">
+    <h3>Anthropic API key required</h3>
+    <p>This tracker fetches live schedule data for each roll number using Claude + web search. Enter your Anthropic API key (it stays in your browser only, never sent anywhere else).</p>
+    <div class="api-row">
+      <input type="text" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
+      <button onclick="saveKey()">Save &amp; Load</button>
+    </div>
+    <p style="margin-top:8px;margin-bottom:0;font-size:12px;">Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="lbl">Free now</div><div class="val g" id="freeCount">—</div></div>
+    <div class="stat"><div class="lbl">In class</div><div class="val r" id="busyCount">—</div></div>
+    <div class="stat"><div class="lbl">Total</div><div class="val" id="totalCount">14</div></div>
+  </div>
+
+  <div class="day-tabs" id="dayTabs"></div>
+
+  <div class="controls">
+    <label>View time:</label>
+    <input type="time" id="viewTime" />
+    <button onclick="applyTime()">Apply</button>
+    <button onclick="resetToNow()">Now</button>
+  </div>
+
+  <div class="free-banner" id="freeBanner"></div>
+
+  <div class="grid" id="peopleGrid">
+    <div class="hint">Enter your API key above to load schedules.</div>
+  </div>
+
+</div>
+
+<script>
+const ROLLS = ["PGP41502","PGP41456","ABM22035","PGP41424","PGP41228","PGP41245","PGP41499","PGP41256","PGP41371","PGP41343","PGP41153","PGP41444","PGP41286","PGP41173"];
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+let scheduleData = {};
+let viewDay = null;
+let viewMinutes = null;
+let apiKey = localStorage.getItem('anthropic_key') || '';
+
+function getIST() {
+  const now = new Date();
+  return new Date(now.getTime() + now.getTimezoneOffset()*60000 + 5.5*3600000);
+}
+
+function updateClock() {
+  const d = getIST();
+  const h = String(d.getHours()).padStart(2,'0'), m = String(d.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = DAYS[d.getDay()] + ', ' + h + ':' + m + ' IST';
+}
+
+function timeToMins(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+function minsToTime(n) { return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'); }
+
+function getStatus(roll, day, mins) {
+  for (const c of (scheduleData[roll]||[])) {
+    if (c.day===day && mins>=timeToMins(c.start) && mins<timeToMins(c.end)) return {busy:true,c};
+  }
+  return {busy:false};
+}
+
+function renderTabs() {
+  const today = getIST().getDay();
+  document.getElementById('dayTabs').innerHTML = [1,2,3,4,5,6].map(d =>
+    `<button class="day-tab${d===(viewDay??today)?' active':''}" onclick="setDay(${d})">${DAYS[d]}</button>`
+  ).join('');
+}
+
+function setDay(d) { viewDay=d; renderTabs(); render(); }
+
+function render() {
+  const ist = getIST();
+  const day = viewDay ?? ist.getDay();
+  const mins = viewMinutes ?? (ist.getHours()*60+ist.getMinutes());
+  document.getElementById('viewTime').value = minsToTime(mins);
+  if (!Object.keys(scheduleData).length) return;
+  let free=[], busy=[], html='';
+  ROLLS.forEach(roll => {
+    const s = getStatus(roll, DAYS[day], mins);
+    if (s.busy) {
+      busy.push(roll);
+      html += `<div class="card busy"><div class="roll">${roll}</div><div class="status"><i class="ti ti-book" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>In class</div><div class="detail">${s.c.course}${s.c.venue?' · '+s.c.venue:''}<br>${s.c.start} – ${s.c.end}</div></div>`;
+    } else {
+      free.push(roll);
+      html += `<div class="card free"><div class="roll">${roll}</div><div class="status g"><i class="ti ti-circle-check" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Free</div><div class="detail">No class at this time</div></div>`;
+    }
+  });
+  document.getElementById('freeCount').textContent = free.length;
+  document.getElementById('busyCount').textContent = busy.length;
+  document.getElementById('peopleGrid').innerHTML = html;
+  const b = document.getElementById('freeBanner');
+  if (free.length) { b.style.display='block'; b.innerHTML='<strong>'+free.length+' free:</strong> '+free.join(', '); }
+  else b.style.display='none';
+}
+
+function applyTime() { const v=document.getElementById('viewTime').value; if(v) viewMinutes=timeToMins(v); render(); }
+function resetToNow() { viewMinutes=null; viewDay=getIST().getDay()||1; renderTabs(); render(); }
+
+function saveKey() {
+  const v = document.getElementById('apiKeyInput').value.trim();
+  if (!v.startsWith('sk-ant-')) { alert('Key should start with sk-ant-'); return; }
+  apiKey = v;
+  localStorage.setItem('anthropic_key', v);
+  loadSchedules();
+}
+
+async function fetchRoll(roll) {
+  const prompt = `Search the IIM Lucknow Term IV timetable at https://chandramouli99.github.io/Term-4-Weekly-Timetable-PGP2-IIML/ for roll number ${roll}.\n\nReturn ONLY a JSON array. Each element: {day,start,end,course,venue}. day = full weekday name, start/end = HH:MM 24hr. Example: [{\"day\":\"Monday\",\"start\":\"09:00\",\"end\":\"10:30\",\"course\":\"FM\",\"venue\":\"LH1\"}]. Return [] if not found.`;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,tools:[{type:"web_search_20250305",name:"web_search"}],messages:[{role:"user",content:prompt}]})
+    });
+    const data = await res.json();
+    const t = (data.content||[]).find(b=>b.type==='text');
+    if (!t) return [];
+    const m = t.text.replace(/```json|```/g,'').trim().match(/\[[\s\S]*\]/);
+    return m ? JSON.parse(m[0]) : [];
+  } catch(e) { return []; }
+}
+
+async function loadSchedules() {
+  if (!apiKey) { alert('Enter your API key first.'); return; }
+  document.getElementById('apiSetup').style.display = 'none';
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Loading…';
+  document.getElementById('peopleGrid').innerHTML='<div class="hint">Fetching schedules… (~30s)</div>';
+  scheduleData={};
+  renderTabs();
+  for (let i=0; i<ROLLS.length; i+=3) {
+    const batch=ROLLS.slice(i,i+3);
+    const results=await Promise.all(batch.map(r=>fetchRoll(r)));
+    batch.forEach((r,j)=>scheduleData[r]=results[j]);
+    document.getElementById('peopleGrid').innerHTML=`<div class="hint">Loaded ${Math.min(i+3,ROLLS.length)} / ${ROLLS.length}…</div>`;
+  }
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-refresh"></i> Refresh';
+  render();
+}
+
+setInterval(updateClock,1000);
+updateClock();
+const _ist = getIST();
+viewDay = _ist.getDay()===0?1:_ist.getDay();
+
+if (apiKey) {
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('apiSetup').style.display = 'none';
+  renderTabs();
+  loadSchedules();
+} else {
+  renderTabs();
+}
+</script>
+</body>
+</html>
